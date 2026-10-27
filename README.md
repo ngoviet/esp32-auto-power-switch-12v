@@ -1,156 +1,190 @@
-# 🔋 ESP32 Auto Power Switch System
+# ESP32 Auto Power Switch 12V
 
-Hệ thống chuyển đổi nguồn tự động giữa Pin và Adaptor 12V dựa trên SOC (State of Charge) của pin từ Home Assistant.
+<!-- readme-axi type=esp32 -->
 
-## ✨ Tính năng chính
+**English** · [Tiếng Việt](README.vi.md)
 
-- 🔄 **Chuyển nguồn tự động**: Dựa trên SOC từ Home Assistant
-- ⚙️ **Cấu hình linh hoạt**: Điều chỉnh ngưỡng từ HA interface
-- 🎛️ **3 chế độ hoạt động**:
-  - `Auto`: Tự động theo SOC pin
-  - `Force Pin`: Bắt buộc dùng Pin
-  - `Force Adaptor`: Bắt buộc dùng Adaptor  
-- 📊 **Monitoring realtime**: Hiển thị trạng thái và SOC
-- 🛡️ **Hysteresis logic**: Tránh dao động nguồn
+An **ESPHome** firmware for an **ESP32 Dev Board** that switches a 12 V load automatically between
+a **battery** and a **12 V adaptor**, based on the battery's **SOC (State of Charge)** read from
+**Home Assistant**. A relay on GPIO16, driven through a D4184 MOSFET module, flips the main power
+relay; thresholds and the operating mode are adjustable from Home Assistant.
 
-## ⚙️ Cấu hình mặc định
+> 🇻🇳 Built and maintained by one person in Việt Nam — if it saves you time, please
+> [support the project](#support-the-project).
 
-| Thông số | Giá trị mặc định | Điều chỉnh |
-|----------|------------------|------------|
-| 🔌 Chuyển sang Adaptor | SOC < 50% | ✅ Từ HA (20-60%) |
-| 🔋 Chuyển về Pin | SOC > 70% | ✅ Từ HA (60-90%) |
-| 📡 GPIO Relay | Pin 16 | ✅ Trong code |
-| 📊 SOC Entity | `sensor.jk_remaining_capacity` | ✅ Trong code |
+## Contents
 
-## 📡 Yêu cầu phần cứng
+- [Features](#features)
+- [Hardware](#hardware)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [How it works](#how-it-works)
+- [Home Assistant](#home-assistant)
+- [Troubleshooting](#troubleshooting)
+- [Project layout](#project-layout)
+- [Development](#development)
+
+## Features
+
+- **Automatic power switching**: based on the SOC from Home Assistant
+- **Flexible configuration**: adjust the thresholds from the HA interface
+- **3 operating modes**:
+  - `Auto`: follows the battery SOC automatically
+  - `Force Pin`: always use the battery
+  - `Force Adaptor`: always use the adaptor
+- **Realtime monitoring**: shows the current state and SOC
+- **Hysteresis logic**: prevents the power source from flapping
+
+## Hardware
 
 - **ESP32 Dev Board**
-- **Relay Module** (kết nối GPIO16)
-- **MOSFET Module D4184** (điều khiển coil relay chính)
-- **Nguồn 12V**: Pin + Adaptor
+- **Relay Module** (connected to GPIO16)
+- **MOSFET Module D4184** (drives the coil of the main relay)
+- **12V power**: Battery + Adaptor
 
-## 📁 Cấu trúc file
+## Quick start
 
-```
-esp32_chuyen_nguon_12v/
-├── README.md                      # File này
-├── esp32_chuyen_nguon_12v.yaml   # Code chính ESP32
-├── base_setup.yaml               # Setup cơ bản (WiFi, sensors, etc.)
-├── .gitignore                    # Loại trừ files không cần thiết
-├── flash.bat                     # Script flash code
-├── log.bat                       # Script xem log
-└── esare.bat                     # Script erase flash
-```
+### 1. Prepare the environment
 
-## 🚀 Hướng dẫn cài đặt
-
-### 1️⃣ Chuẩn bị môi trường
 ```bash
-# Cài đặt ESPHome
+# Install ESPHome
 pip install esphome
 
 # Clone repository
-git clone https://github.com/ngoviet/esp32-chuyen-nguon-12v.git
-cd esp32-chuyen-nguon-12v
+git clone https://github.com/ngoviet/esp32-auto-power-switch-12v.git
+cd esp32-auto-power-switch-12v
 ```
 
-### 2️⃣ Cấu hình WiFi và bảo mật
+### 2. Configure WiFi and security
+
 ```bash
-# Tạo file secrets từ template
+# Create the secrets file from the template
 cp secrets.yaml.example secrets.yaml
 ```
 
-Sửa file `secrets.yaml`:
+Edit `secrets.yaml`:
+
 ```yaml
-# WiFi của bạn
+# Your WiFi
 wifi_ssid: "TEN_WIFI_CUA_BAN"
 wifi_password: "MAT_KHAU_WIFI"
 
-# Mật khẩu OTA
+# OTA password
 ota_password: "mat_khau_ota_tuy_chon"
 ```
 
-> ⚠️ **Quan trọng**: File `secrets.yaml` chỉ tồn tại local, KHÔNG bao giờ được push lên GitHub!
+> ⚠️ **Important**: `secrets.yaml` exists only locally and must NEVER be pushed to GitHub!
 
-### 3️⃣ Tùy chỉnh cấu hình
-- **SOC Entity**: Sửa `battery_soc_entity` trong `substitutions` nếu khác `sensor.jk_remaining_capacity`
-- **GPIO Pin**: Sửa `relay_pin` nếu khác GPIO16
-- **Ngưỡng SOC**: Sửa `soc_switch_to_adapter_default` và `soc_switch_to_battery_default`
+### 3. Customise the configuration
 
-### 4️⃣ Flash firmware lên ESP32
+- **SOC Entity**: change `battery_soc_entity` in `substitutions` if it is not `sensor.jk_remaining_capacity`
+- **GPIO Pin**: change `relay_pin` if it is not GPIO16
+- **SOC thresholds**: change `soc_switch_to_adapter_default` and `soc_switch_to_battery_default`
+
+### 4. Flash the firmware to the ESP32
+
 ```bash
-# Cách 1: ESPHome CLI
+# Option 1: ESPHome CLI
 esphome run esp32_chuyen_nguon_12v.yaml
 
-# Cách 2: Script Windows
+# Option 2: Windows script
 flash.bat
 
-# Cách 3: ESPHome Dashboard
+# Option 3: ESPHome Dashboard
 esphome dashboard esp32_chuyen_nguon_12v.yaml
 ```
 
-## 🔄 Logic hoạt động
+## Configuration
 
-### Chế độ Auto
+Default settings:
+
+| Setting | Default value | Adjustable |
+|----------|------------------|------------|
+| Switch to Adaptor | SOC < 50% | ✅ From HA (20-60%) |
+| Switch back to Battery | SOC > 70% | ✅ From HA (60-90%) |
+| GPIO Relay | Pin 16 | ✅ In code |
+| SOC Entity | `sensor.jk_remaining_capacity` | ✅ In code |
+
+## How it works
+
+### Auto mode
+
 ```
-SOC < 50% → Chuyển sang Adaptor (sạc pin)
-50% ≤ SOC ≤ 70% → Giữ nguyên trạng thái (hysteresis)
-SOC > 70% → Chuyển về Pin (ưu tiên pin)
+SOC < 50% → Switch to Adaptor (charge the battery)
+50% ≤ SOC ≤ 70% → Keep the current state (hysteresis)
+SOC > 70% → Switch back to Battery (battery preferred)
 ```
 
-### Chế độ Manual
-- **Force Pin**: Luôn dùng pin (bỏ qua SOC)
-- **Force Adaptor**: Luôn dùng adaptor (bỏ qua SOC)
+### Manual mode
 
-## 🏠 Home Assistant Integration
+- **Force Pin**: always use the battery (ignores SOC)
+- **Force Adaptor**: always use the adaptor (ignores SOC)
 
-Sau khi flash thành công, ESP32 sẽ tự động xuất hiện trong HA với các entity:
+## Home Assistant
 
-### 🎛️ Điều khiển
-- **`select.che_do_chuyen_nguon`**: Chọn Auto/Force Pin/Force Adaptor
-- **`number.nguong_chuyen_sang_adaptor`**: Ngưỡng chuyển Adaptor (20-60%)  
-- **`number.nguong_chuyen_ve_pin`**: Ngưỡng chuyển Pin (60-90%)
+After a successful flash, the ESP32 appears in HA automatically with these entities:
 
-### 📊 Monitoring  
-- **`sensor.battery_soc_tu_ha`**: SOC đồng bộ từ HA
-- **`binary_sensor.dang_dung_adaptor`**: Trạng thái nguồn hiện tại
-- **`sensor.trang_thai_soc`**: Mô tả chi tiết trạng thái SOC
+### Controls
 
-## � Troubleshooting
+- **`select.che_do_chuyen_nguon`**: choose Auto / Force Pin / Force Adaptor
+- **`number.nguong_chuyen_sang_adaptor`**: threshold for switching to the Adaptor (20-60%)
+- **`number.nguong_chuyen_ve_pin`**: threshold for switching back to the Battery (60-90%)
 
-### 🚫 Không nhận SOC từ HA
-1. ✅ Kiểm tra entity `sensor.jk_remaining_capacity` tồn tại
-2. ✅ ESP32 đã kết nối API với HA  
-3. ✅ Xem log: `esphome logs esp32_chuyen_nguon_12v.yaml`
+### Monitoring
 
-### ⚡ Relay không hoạt động
-1. ✅ Kiểm tra kết nối GPIO16 → Relay IN
-2. ✅ Kiểm tra nguồn 3.3V cho relay module
-3. ✅ Test bằng chế độ "Force Manual"
+- **`sensor.battery_soc_tu_ha`**: SOC synced from HA
+- **`binary_sensor.dang_dung_adaptor`**: current power source
+- **`sensor.trang_thai_soc`**: detailed description of the SOC state
 
-### 📡 WiFi không kết nối  
-1. ✅ Kiểm tra `secrets.yaml` - SSID/password đúng chưa
-2. ✅ Đảm bảo ESP32 trong vùng phủ sóng WiFi
-3. ✅ Xem log: `esphome logs esp32_chuyen_nguon_12v.yaml`
+## Troubleshooting
 
-### 🔄 SOC không cập nhật
-1. ✅ Entity `sensor.jk_remaining_capacity` có dữ liệu trong HA
-2. ✅ ESP32 đã được add vào HA qua ESPHome integration  
-3. ✅ Kiểm tra Home Assistant API token
+### No SOC received from HA
 
-## 📝 License
+1. Check that the entity `sensor.jk_remaining_capacity` exists
+2. Check that the ESP32 is connected to HA over the API
+3. View the log: `esphome logs esp32_chuyen_nguon_12v.yaml`
 
-MIT License - Sử dụng tự do cho các dự án cá nhân và thương mại.
+### Relay does not work
 
-## 🤝 Contributing
+1. Check the wiring GPIO16 → Relay IN
+2. Check the 3.3V supply to the relay module
+3. Test with the "Force Manual" mode
 
-Mọi đóng góp đều được chào đón! Vui lòng tạo Issue hoặc Pull Request.
+### WiFi does not connect
 
-## 📧 Support
+1. Check `secrets.yaml` — are the SSID/password correct?
+2. Make sure the ESP32 is within WiFi range
+3. View the log: `esphome logs esp32_chuyen_nguon_12v.yaml`
 
-Nếu gặp vấn đề, vui lòng tạo Issue trên GitHub repository này.
+### SOC does not update
 
----
+1. The entity `sensor.jk_remaining_capacity` has data in HA
+2. The ESP32 has been added to HA through the ESPHome integration
+3. Check the Home Assistant API token
+
+### Getting help
+
+If you run into a problem, please open an
+[issue](https://github.com/ngoviet/esp32-auto-power-switch-12v/issues) on this GitHub repository.
+
+## Project layout
+
+```
+esp32_chuyen_nguon_12v/
+├── README.md                      # This file
+├── esp32_chuyen_nguon_12v.yaml   # Main ESP32 code
+├── base_setup.yaml               # Basic setup (WiFi, sensors, etc.)
+├── .gitignore                    # Excludes unneeded files
+├── flash.bat                     # Flash script
+├── log.bat                       # Log viewer script
+└── esare.bat                     # Flash erase script
+```
+
+## Development
+
+### Contributing
+
+All contributions are welcome! Please open an Issue or a Pull Request.
 
 <!-- support:start -->
 ## Support the project
@@ -169,5 +203,10 @@ Nếu gặp vấn đề, vui lòng tạo Issue trên GitHub repository này.
   <img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/vietqr-card.svg" width="300" alt="VietQR — MB Bank — NGO DUC VIET — 911051212">
 </p>
 
-<p align="center"><sub>🇻🇳 VietQR: quét bằng app ngân hàng bất kỳ, nội dung <code>Ung ho esp32-auto-power-switch-12v</code>. Cảm ơn bạn! · Thank you for keeping this project alive.</sub></p>
+<p align="center"><sub>🇻🇳 VietQR: scan with any Vietnamese banking app, transfer note <code>Ung ho esp32-auto-power-switch-12v</code>. Thank you for keeping this project alive!</sub></p>
+<p align="center"><sub>Crypto (BEP20 network): <code>0x57f07d44fb581cddc028a0c67d63a8cc05aa6caa</code> · USDT · USDC · BNB · ETH · BTC</sub></p>
 <!-- support:end -->
+
+## License
+
+[MIT](LICENSE) © Ngô Đức Việt.
