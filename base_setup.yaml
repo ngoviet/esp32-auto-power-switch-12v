@@ -1,99 +1,74 @@
+# Phần dùng chung: dịch vụ cốt lõi, Wi-Fi, chẩn đoán.
+# Nạp vào tệp chính qua `packages:`; board và mạng Wi-Fi khai ở tệp chính.
 
 esp32:
-  # board: ${board}
   framework:
     type: esp-idf
 
 # ───────────────────────── Dịch vụ cốt lõi ─────────────────────────
 api:
+  # Không tự khởi động lại khi mất Home Assistant: logic relay vẫn chạy tại chỗ,
+  # còn mỗi lần khởi động lại relay nhả ra một nhịp (GPIO thả nổi lúc boot).
   reboot_timeout: 0s
+  encryption:
+    key: !secret api_encryption_key
 
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Trang web dự phòng để đổi chế độ khi Home Assistant không chạy.
 web_server:
   port: 80
 
-time:
-  - platform: sntp
-
-ota:
-  platform: esphome
-  password: !secret ota_password
-
 logger:
   baud_rate: 115200
-  # level: Info
-  level: Debug
+  # INFO bỏ hẳn log DEBUG lúc biên dịch: firmware nhỏ hơn, ít tốn CPU.
+  # Cần soi chi tiết thì tạm đổi sang DEBUG.
+  level: INFO
+
 wifi:
-  # networks:
-  #   - ssid: "Ga"
-  #     password: "passWord#8586"
-    # === Aruba T1 (Channel 1) ===
-    #   bssid: a8:bd:27:f2:62:a2
-    #   channel: 1
-
-    # === Aruba T2 (Channel 6) ===
-    #   bssid: a8:bd:27:de:21:a2
-    #   channel: 6
-
-    # === Aruba T3 (Channel 11) ===
-      # bssid: a8:bd:27:45:b0:02
-      # channel: 11
-  # ap:
-  #   ssid: ${dev_name}
-  fast_connect: true
+  # Nhà có nhiều AP cùng một SSID (Aruba T1/T2/T3): tắt fast_connect để ESP32
+  # quét rồi chọn AP mạnh nhất, thay vì bám AP đầu tiên nó thấy.
+  fast_connect: false
   power_save_mode: none
-  reboot_timeout: 10min
+  # Không khởi động lại vì mất Wi-Fi: mạch vẫn giữ trạng thái relay, còn
+  # khởi động lại chỉ làm relay nhả một nhịp. Wi-Fi tự kết nối lại.
+  reboot_timeout: 0s
 
 captive_portal:
 
+# Lý do khởi động lại (bắt được sụt áp/brownout khi relay đóng cắt) và heap.
+debug:
+  update_interval: 60s
 
-# ─────────── RSSI + Wi-Fi Quality (%) + Wi-Fi Bars (x/5) ───────────
+# ─────────────────────────── Cảm biến chẩn đoán ───────────────────────────
 sensor:
-
   - platform: uptime
-    name: "Uptime Seconds"
-    id: uptime_sec  
-    update_interval: 10s
+    id: uptime_sec
+    internal: true # chỉ dùng để dựng chuỗi "Uptime" bên dưới
+    update_interval: 60s
 
-  - platform: template
-    name: "Heap Free"
-    id: heap_free_kb
-    unit_of_measurement: "kB"
-    accuracy_decimals: 0
-    update_interval: 30s
-    entity_category: diagnostic
-    lambda: |-
-      #ifdef ESP_IDF_VERSION
-        size_t free_bytes = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-      #else
-        size_t free_bytes = ESP.getFreeHeap();
-      #endif
-      return (float) free_bytes / 1024.0f;
+  - platform: debug
+    free:
+      name: "Heap Free"
+      unit_of_measurement: "kB"
+      accuracy_decimals: 0
+      filters:
+        - multiply: 0.0009765625 # byte → kB
 
-  - platform: template
-    name: "PSRAM Free"
-    id: psram_free_kb
-    unit_of_measurement: "kB"
-    accuracy_decimals: 0
-    update_interval: 30s
-    entity_category: diagnostic
-    lambda: |-
-      #if CONFIG_SPIRAM
-        size_t free_bytes = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-        return (float) free_bytes / 1024.0f;
-      #else
-        return NAN;  // không có PSRAM thì trả NAN (ẩn biểu đồ)
-      #endif
   # 1) RSSI gốc (dBm) + làm mượt
   - platform: wifi_signal
     id: rssi_dbm
     name: "WiFi RSSI"
     update_interval: 30s
+    entity_category: diagnostic
     filters:
       - sliding_window_moving_average:
           window_size: 5
           send_every: 1
 
-  # 2) Quy đổi dBm -> % chất lượng (0–100)
+  # 2) Quy đổi dBm → % chất lượng (0–100)
   - platform: template
     id: wifi_quality_pct
     name: "WiFi Quality"
@@ -103,9 +78,9 @@ sensor:
     entity_category: diagnostic
     lambda: |-
       float rssi = id(rssi_dbm).state;
-      if (isnan(rssi)) return NAN;
+      if (std::isnan(rssi)) return NAN;
       if (rssi <= -100) return 0;
-      if (rssi >= -50)  return 100;
+      if (rssi >= -50) return 100;
       return (rssi + 100.0f) * 2.0f;
 
 text_sensor:
@@ -113,29 +88,36 @@ text_sensor:
     name: "Uptime"
     icon: mdi:clock-outline
     entity_category: diagnostic
+    update_interval: 60s
     lambda: |-
-      uint32_t t = (uint32_t) id(uptime_sec).state;
-      uint32_t d = t / 86400;
-      uint32_t h = (t % 86400) / 3600;
-      uint32_t m = (t % 3600) / 60;
-      uint32_t s = t % 60;
-      char buf[40];
-      if (d)       snprintf(buf, sizeof(buf), "%ud %uh %um %us", d, h, m, s);
-      else if (h)  snprintf(buf, sizeof(buf), "%uh %um %us", h, m, s);
-      else if (m)  snprintf(buf, sizeof(buf), "%um %us", m, s);
-      else         snprintf(buf, sizeof(buf), "%us", s);
+      if (std::isnan(id(uptime_sec).state)) return {};
+      unsigned t = (unsigned) id(uptime_sec).state;
+      unsigned d = t / 86400, h = (t % 86400) / 3600, m = (t % 3600) / 60;
+      char buf[24];
+      if (d) snprintf(buf, sizeof(buf), "%ud %uh %um", d, h, m);
+      else if (h) snprintf(buf, sizeof(buf), "%uh %um", h, m);
+      else snprintf(buf, sizeof(buf), "%um", m);
       return std::string(buf);
-    update_interval: 10s
+
+  - platform: debug
+    reset_reason:
+      name: "Lý do khởi động lại"
+
   - platform: wifi_info
     ip_address:
       name: "WiFi IP"
+      entity_category: diagnostic
     ssid:
       name: "WiFi SSID"
+      entity_category: diagnostic
     bssid:
-      name: "WiFi BSSID"
+      name: "WiFi BSSID" # biết đang bám AP Aruba nào
+      entity_category: diagnostic
     mac_address:
       name: "WiFi MAC"
-  # 3) Quy đổi dBm -> số vạch "x/5"
+      entity_category: diagnostic
+
+  # 3) Quy đổi dBm → số vạch "x/5"
   - platform: template
     id: wifi_bars
     name: "WiFi Bars"
@@ -143,21 +125,15 @@ text_sensor:
     entity_category: diagnostic
     lambda: |-
       float rssi = id(rssi_dbm).state;
-      if (isnan(rssi)) return {"N/A"};
-      int bars = 0;
-      if (rssi >= -55) bars = 5;
-      else if (rssi >= -65) bars = 4;
-      else if (rssi >= -72) bars = 3;
-      else if (rssi >= -80) bars = 2;
-      else if (rssi >= -90) bars = 1;
-      else bars = 0;
-      char buffer[5];
-      sprintf(buffer, "%d/5", bars);
-      return {buffer};
+      if (std::isnan(rssi)) return {"N/A"};
+      int bars = rssi >= -55 ? 5 : rssi >= -65 ? 4 : rssi >= -72 ? 3 : rssi >= -80 ? 2 : rssi >= -90 ? 1 : 0;
+      char buf[8];
+      snprintf(buf, sizeof(buf), "%d/5", bars);
+      return {buf};
 
-# ── Nút restart thủ công ─────────────────────────────────────────────
+# ── Nút khởi động lại thủ công ─────────────────────────────────────────
 button:
   - platform: restart
     id: restart_button
     name: "Restart thiết bị"
-
+    entity_category: config
