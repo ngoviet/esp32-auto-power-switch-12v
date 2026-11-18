@@ -220,6 +220,12 @@ esp32_chuyen_nguon_12v/
 
 ## Phát triển
 
+### Kiểm tra tự động
+
+Mỗi PR sửa cấu hình chạy workflow `ESPHome` trên GitHub Actions: `esphome config` rồi biên dịch
+firmware, dùng secrets giả sinh từ `secrets.yaml.example`. Thêm `!secret` mới vào YAML thì phải
+thêm khoá đó vào `secrets.yaml.example`, không thì CI báo đỏ.
+
 ### Đóng góp
 
 Mọi đóng góp đều được chào đón! Vui lòng tạo Issue hoặc Pull Request.
