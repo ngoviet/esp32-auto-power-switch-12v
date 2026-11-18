@@ -220,6 +220,12 @@ esp32_chuyen_nguon_12v/
 
 ## Development
 
+### Automated checks
+
+Every PR that touches the config runs the `ESPHome` workflow on GitHub Actions: `esphome config`,
+then a firmware build, with fake secrets generated from `secrets.yaml.example`. When the YAML gains
+a new `!secret`, add that key to `secrets.yaml.example` too, or CI turns red.
+
 ### Contributing
 
 All contributions are welcome! Please open an Issue or a Pull Request.

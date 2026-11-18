@@ -1,0 +1,73 @@
+name: ESPHome
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*.yaml"
+      - secrets.yaml.example
+      - .github/workflows/esphome.yml
+      - .github/scripts/secrets_gia.py
+  pull_request:
+    paths:
+      - "*.yaml"
+      - secrets.yaml.example
+      - .github/workflows/esphome.yml
+      - .github/scripts/secrets_gia.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: esphome-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ESPHOME_VERSION: "2026.7.4"
+  CONFIG: esp32_chuyen_nguon_12v.yaml
+
+jobs:
+  config:
+    name: Kiểm cấu hình
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Cài ESPHome
+        run: pip install --quiet "esphome==${ESPHOME_VERSION}"
+      - name: Tạo secrets giả từ secrets.yaml.example
+        run: python .github/scripts/secrets_gia.py secrets.yaml
+      - name: esphome config
+        run: esphome config "$CONFIG" > config.out 2>&1 || { cat config.out; exit 1; }
+
+  compile:
+    name: Biên dịch firmware
+    needs: config
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Cài ESPHome
+        run: pip install --quiet "esphome==${ESPHOME_VERSION}"
+      # ESP-IDF và bộ biên dịch (~2 GB) nằm ở ~/.cache/esphome; giữ lại giữa các lần chạy.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/esphome
+          key: esphome-idf-${{ runner.os }}-${{ env.ESPHOME_VERSION }}
+      - name: Tạo secrets giả từ secrets.yaml.example
+        run: python .github/scripts/secrets_gia.py secrets.yaml
+      - name: esphome compile
+        run: esphome compile "$CONFIG"
+      # ESPHome có lúc báo "Successfully compiled" mà không sinh firmware: kiểm có tệp thật.
+      - name: Kiểm có firmware
+        run: |
+          bin=$(find .esphome/build -path '*/build/firmware.ota.bin' -size +100k | head -1)
+          test -n "$bin" || { echo "khong thay firmware.ota.bin"; exit 1; }
+          ls -l "$bin"
