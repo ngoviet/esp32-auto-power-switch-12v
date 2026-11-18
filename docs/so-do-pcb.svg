@@ -1,0 +1,336 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 800" role="img" aria-labelledby="pcb-title pcb-desc">
+  <title id="pcb-title">Sơ đồ mạch kiểu PCB, bo điều khiển chuyển nguồn 12V</title>
+  <desc id="pcb-desc">Bo 100 x 70 mm nhìn từ trên xuống: ESP32 DevKit V1, mạch hạ áp 5V, hai diode Schottky, tụ lọc, module MOSFET D4184, điện trở kéo xuống 10k, hai cầu đấu nguồn. Relay 12V 40A, cầu chì, nguồn và tải nằm ngoài bo.</desc>
+  <defs>
+    <pattern id="pcb-grid" width="20.32" height="20.32" patternUnits="userSpaceOnUse" x="40" y="110">
+      <circle cx="10.16" cy="10.16" r="1.3" fill="#2a8a5c" opacity=".45"/>
+    </pattern>
+    <g id="pad"><circle r="7.5" class="pad"/><circle r="3.2" class="hole"/></g>
+    <g id="pad-sq"><rect x="-7.5" y="-7.5" width="15" height="15" class="pad"/><circle r="3.2" class="hole"/></g>
+    <g id="pad-gnd"><circle r="8.5" class="pad-gnd"/><circle r="3.2" class="hole"/></g>
+    <g id="hdr"><circle r="6.6" class="pad"/><circle r="2.8" class="hole"/></g>
+    <g id="hdr-gnd"><circle r="7.4" class="pad-gnd"/><circle r="2.8" class="hole"/></g>
+    <g id="screw"><circle r="10" class="screw"/><line x1="-6" y1="-6" x2="6" y2="6" class="slot"/></g>
+    <g id="mhole"><circle r="20" class="pad"/><circle r="12.8" class="hole"/></g>
+    <style>
+      .sheet { fill: #0b1016; }
+      .board { fill: #0f5c3a; stroke: #0a3f28; stroke-width: 3; }
+      .cu { stroke: #e8a64a; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .cu12 { stroke-width: 7; }
+      .cu5 { stroke-width: 6; }
+      .cus { stroke-width: 3.6; }
+      .pad { fill: #e7c26a; stroke: #b8923d; stroke-width: 1; }
+      .pad-gnd { fill: #e7c26a; stroke: #6aa8ff; stroke-width: 3; }
+      .hole { fill: #0b1016; }
+      .silk { font: 600 13px Consolas, "Cascadia Mono", monospace; fill: #eef4ef; }
+      .silk-s { font: 600 11px Consolas, "Cascadia Mono", monospace; fill: #d6e4da; }
+      .silk-hi { font: 700 12px Consolas, "Cascadia Mono", monospace; fill: #7dd3fc; }
+      .silk-line { stroke: #eef4ef; stroke-width: 1.6; fill: none; }
+      .mod { fill: #173b6c; fill-opacity: .82; stroke: #3b7dd8; stroke-width: 2; }
+      .esp { fill: #15181d; fill-opacity: .9; stroke: #4a515c; stroke-width: 2; }
+      .shield { fill: #b9c0c8; stroke: #8a939c; stroke-width: 1.5; }
+      .metal { fill: #9aa3ad; stroke: #6b737c; }
+      .chip { fill: #1f2328; stroke: #4a515c; }
+      .term { fill: #2f80d1; fill-opacity: .9; stroke: #1d5fa3; stroke-width: 2; }
+      .screw { fill: #cfd6dd; stroke: #7b848e; stroke-width: 1.5; }
+      .slot { stroke: #5b636c; stroke-width: 2.4; }
+      .dio { fill: #23272d; }
+      .band { fill: #c9ced6; }
+      .lead { stroke: #aab3bd; stroke-width: 2; }
+      .res { fill: #d8c7a0; stroke: #a8946a; }
+      .t { font: 700 26px "Segoe UI", system-ui, sans-serif; fill: #f1f5fb; letter-spacing: .5px; }
+      .st { font: 15px "Segoe UI", system-ui, sans-serif; fill: #9db0cf; }
+      .h { font: 600 15px "Segoe UI", system-ui, sans-serif; fill: #e8eef8; }
+      .s { font: 12.5px "Segoe UI", system-ui, sans-serif; fill: #9db0cf; }
+      .lbl { font: 600 13px "Segoe UI", system-ui, sans-serif; fill: #c7d2e5; }
+      .mono { font: 600 13px Consolas, "Cascadia Mono", monospace; fill: #e8eef8; }
+      .lg { font: 13px "Segoe UI", system-ui, sans-serif; fill: #c7d2e5; }
+      .box { fill: #162238; stroke: #2d4466; stroke-width: 2; }
+      .relay { fill: #1d2433; stroke: #f59e0b; stroke-width: 2.5; }
+      .w12 { stroke: #f59e0b; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .wtap { stroke: #fbbf24; stroke-width: 4; fill: none; stroke-linecap: round; }
+      .wgnd { stroke: #94a3b8; stroke-width: 4; fill: none; stroke-linecap: round; }
+      .wcoil { stroke: #fb7185; stroke-width: 4; fill: none; stroke-linecap: round; }
+      .fuse { fill: #1d2433; stroke: #f59e0b; stroke-width: 2; }
+      .arm { stroke: #f1f5fb; stroke-width: 4; stroke-linecap: round; }
+      .arm-alt { stroke: #6f86ad; stroke-width: 2.5; stroke-dasharray: 6 5; stroke-linecap: round; }
+      .dot { fill: #f1f5fb; }
+      .sym { stroke: #f1f5fb; stroke-width: 2.5; fill: none; }
+      .symf { fill: #f1f5fb; }
+    </style>
+  </defs>
+
+  <rect class="sheet" width="1260" height="800" rx="18"/>
+  <text class="t" x="40" y="48">SƠ ĐỒ MẠCH KIỂU PCB · BO ĐIỀU KHIỂN 100 × 70 mm</text>
+  <text class="st" x="40" y="76">Mặt trên nhìn từ trên xuống · relay, cầu chì, nguồn và tải lắp ngoài bo · bố trí đề xuất, đối chiếu mạch thật trước khi làm</text>
+
+  <!-- ══════════════ BO MẠCH ══════════════ -->
+  <g id="pcb-board">
+    <title>Bo 100 × 70 mm, 2 lớp: mặt trên đi dây, mặt dưới phủ đồng làm GND</title>
+    <rect class="board" x="40" y="110" width="800" height="560" rx="24"/>
+    <rect fill="url(#pcb-grid)" x="40" y="110" width="800" height="560" rx="24"/>
+    <use href="#mhole" x="72" y="142"/>
+    <use href="#mhole" x="552" y="142"/>
+    <use href="#mhole" x="72" y="638"/>
+    <use href="#mhole" x="808" y="638"/>
+    <text class="silk-s" x="660" y="656" text-anchor="middle">CHUYEN-NGUON-12V · v2 · 100×70 mm</text>
+  </g>
+
+  <!-- Đường đồng mặt trên -->
+  <g id="net-pin12">
+    <title>Lưới PIN12: J1+ → D1 (anode)</title>
+    <path class="cu cu12" d="M800 182H472"/>
+  </g>
+  <g id="net-adp12">
+    <title>Lưới ADP12: J2+ → D2 (anode), rẽ nhánh nuôi cuộn hút</title>
+    <path class="cu cu12" d="M800 326H520V262H472"/>
+  </g>
+  <g id="net-coil-supply">
+    <title>Nguồn cuộn hút: ADP12 → DC+ của module D4184</title>
+    <path class="cu cu12" d="M744 326V454H784"/>
+  </g>
+  <g id="net-vin-or">
+    <title>Lưới VIN_OR: catot D1, D2 → tụ C1 và IN+ mạch hạ áp</title>
+    <path class="cu cu12" d="M392 182H368M392 262H368M368 182V296H416M368 206H325.6"/>
+  </g>
+  <g id="net-5v">
+    <title>Lưới 5V: OUT+ mạch hạ áp → chân VIN của ESP32</title>
+    <path class="cu cu5" d="M212 206H136V398"/>
+  </g>
+  <g id="net-gpio16">
+    <title>Lưới IO16: chân RX2/GPIO16 → TRIG của D4184, có R1 10k kéo xuống GND</title>
+    <path class="cu cus" d="M237.6 601.2V646H520V470H552"/>
+  </g>
+
+  <!-- J1, J2: cầu đấu vào nguồn -->
+  <g id="j1">
+    <title>J1: cầu đấu 2 chân 5.08 mm, vào 12V phía Pin (dòng nhỏ, chỉ nuôi bo)</title>
+    <rect class="term" x="768" y="160" width="64" height="85" rx="4"/>
+    <use href="#pad" x="800" y="182"/>
+    <use href="#pad-gnd" x="800" y="222.6"/>
+    <use href="#screw" x="800" y="182"/>
+    <use href="#screw" x="800" y="222.6"/>
+    <text class="silk" x="818" y="187">+</text>
+    <text class="silk" x="818" y="227">−</text>
+    <text class="silk" x="760" y="166" text-anchor="end">J1 · PIN 12V</text>
+  </g>
+  <g id="j2">
+    <title>J2: cầu đấu 2 chân 5.08 mm, vào 12V phía Adaptor (nuôi bo và cuộn hút)</title>
+    <rect class="term" x="768" y="304" width="64" height="85" rx="4"/>
+    <use href="#pad" x="800" y="326"/>
+    <use href="#pad-gnd" x="800" y="366.6"/>
+    <use href="#screw" x="800" y="326"/>
+    <use href="#screw" x="800" y="366.6"/>
+    <text class="silk" x="818" y="331">+</text>
+    <text class="silk" x="818" y="371">−</text>
+    <text class="silk" x="760" y="312" text-anchor="end">J2 · ADAPTOR 12V</text>
+  </g>
+
+  <!-- D1, D2 -->
+  <g id="d1">
+    <title>D1 SS34 (Schottky 3A 40V): Pin → VIN_OR, chặn dòng ngược sang Adaptor</title>
+    <line class="lead" x1="392" y1="182" x2="472" y2="182"/>
+    <rect class="dio" x="412" y="172.4" width="40" height="19.2" rx="4"/>
+    <rect class="band" x="414" y="172.4" width="6" height="19.2"/>
+    <use href="#pad-sq" x="392" y="182"/>
+    <use href="#pad" x="472" y="182"/>
+    <text class="silk" x="432" y="164" text-anchor="middle">D1 SS34</text>
+  </g>
+  <g id="d2">
+    <title>D2 SS34: Adaptor → VIN_OR</title>
+    <line class="lead" x1="392" y1="262" x2="472" y2="262"/>
+    <rect class="dio" x="412" y="252.4" width="40" height="19.2" rx="4"/>
+    <rect class="band" x="414" y="252.4" width="6" height="19.2"/>
+    <use href="#pad-sq" x="392" y="262"/>
+    <use href="#pad" x="472" y="262"/>
+    <text class="silk" x="432" y="244" text-anchor="middle">D2 SS34</text>
+  </g>
+
+  <!-- C1 -->
+  <g id="c1">
+    <title>C1 470 µF 25V: giữ áp cho ESP32 lúc relay đảo tiếp điểm</title>
+    <circle class="silk-line" cx="416" cy="310" r="28"/>
+    <path class="silk-line" d="M396 330A28 28 0 0 0 436 330"/>
+    <use href="#pad-sq" x="416" y="296"/>
+    <use href="#pad-gnd" x="416" y="324"/>
+    <text class="silk" x="430" y="300">+</text>
+    <text class="silk" x="416" y="358" text-anchor="middle">C1 470µF</text>
+  </g>
+
+  <!-- U2 mạch hạ áp -->
+  <g id="u2">
+    <title>U2 module hạ áp MP1584 / Mini-360: chỉnh đúng 5.0V trước khi nối ESP32</title>
+    <rect class="mod" x="200" y="190" width="137.6" height="89.6" rx="6"/>
+    <rect class="chip" x="244" y="214" width="42" height="42" rx="4"/>
+    <text class="silk-s" x="265" y="239" text-anchor="middle">4R7</text>
+    <rect class="chip" x="296" y="226" width="16" height="18"/>
+    <use href="#pad" x="212" y="206"/>
+    <use href="#pad-gnd" x="212" y="266"/>
+    <use href="#pad" x="325.6" y="206"/>
+    <use href="#pad-gnd" x="325.6" y="266"/>
+    <text class="silk-s" x="224" y="226">5V</text>
+    <text class="silk-s" x="298" y="212">IN</text>
+    <text class="silk" x="268.8" y="180" text-anchor="middle">U2 BUCK 12→5V</text>
+  </g>
+
+  <!-- U1 ESP32 DevKit -->
+  <g id="u1">
+    <title>U1 ESP32 DevKit V1 30 chân, cắm trên hàng rào cái. Cổng USB quay ra mép trái để nạp code</title>
+    <rect class="esp" x="92" y="386.4" width="412" height="226.4" rx="8"/>
+    <rect class="metal" x="76" y="486" width="28" height="56" rx="3"/>
+    <rect class="chip" x="112" y="446" width="16" height="12" rx="2"/>
+    <rect class="chip" x="112" y="572" width="16" height="12" rx="2"/>
+    <rect class="shield" x="300" y="443.6" width="152" height="144" rx="4"/>
+    <path class="silk-line" d="M466 452V578M478 452V578M466 452H478M466 476H478M466 500H478M466 524H478M466 548H478M466 578H478"/>
+    <text class="silk-s" x="376" y="520" text-anchor="middle">ESP32-WROOM-32</text>
+    <text class="silk" x="200" y="492" text-anchor="middle">U1 ESP32</text>
+    <text class="silk" x="200" y="512" text-anchor="middle">DEVKIT V1 · 30P</text>
+    <text class="silk-s" x="132" y="476">EN</text>
+    <text class="silk-s" x="132" y="566">BOOT</text>
+  </g>
+  <g id="u1-header-top">
+    <title>Hàng chân trên (cột trái của DevKit): VIN, GND, D13 … EN</title>
+    <use href="#hdr-gnd" x="156.32" y="398"/>
+    <use href="#hdr" x="136" y="398"/>
+    <use href="#hdr" x="176.64" y="398"/><use href="#hdr" x="196.96" y="398"/><use href="#hdr" x="217.28" y="398"/>
+    <use href="#hdr" x="237.6" y="398"/><use href="#hdr" x="257.92" y="398"/><use href="#hdr" x="278.24" y="398"/>
+    <use href="#hdr" x="298.56" y="398"/><use href="#hdr" x="318.88" y="398"/><use href="#hdr" x="339.2" y="398"/>
+    <use href="#hdr" x="359.52" y="398"/><use href="#hdr" x="379.84" y="398"/><use href="#hdr" x="400.16" y="398"/>
+    <use href="#hdr" x="420.48" y="398"/>
+    <text class="silk-s" x="124" y="402" text-anchor="end">VIN</text>
+    <text class="silk-s" x="156.32" y="422" text-anchor="middle">GND</text>
+    <text class="silk-s" x="420.48" y="422" text-anchor="middle">EN</text>
+  </g>
+  <g id="u1-header-bottom">
+    <title>Hàng chân dưới (cột phải của DevKit): 3V3, GND, D15, D2, D4, RX2 = GPIO16 …</title>
+    <use href="#hdr" x="136" y="601.2"/>
+    <use href="#hdr-gnd" x="156.32" y="601.2"/>
+    <use href="#hdr" x="176.64" y="601.2"/><use href="#hdr" x="196.96" y="601.2"/><use href="#hdr" x="217.28" y="601.2"/>
+    <use href="#hdr" x="237.6" y="601.2"/><use href="#hdr" x="257.92" y="601.2"/><use href="#hdr" x="278.24" y="601.2"/>
+    <use href="#hdr" x="298.56" y="601.2"/><use href="#hdr" x="318.88" y="601.2"/><use href="#hdr" x="339.2" y="601.2"/>
+    <use href="#hdr" x="359.52" y="601.2"/><use href="#hdr" x="379.84" y="601.2"/><use href="#hdr" x="400.16" y="601.2"/>
+    <use href="#hdr" x="420.48" y="601.2"/>
+    <text class="silk-s" x="124" y="605" text-anchor="end">3V3</text>
+    <text class="silk-s" x="156.32" y="584" text-anchor="middle">GND</text>
+    <text class="silk-hi" x="237.6" y="584" text-anchor="middle">IO16/RX2</text>
+  </g>
+
+  <!-- U3 module D4184 -->
+  <g id="u3">
+    <title>U3 module MOSFET D4184: TRIG nhận GPIO16, OUT+/OUT− nối cuộn hút relay. Thứ tự chân tuỳ hãng, đối chiếu nhãn in trên module</title>
+    <rect class="mod" x="536" y="430" width="264" height="144" rx="6"/>
+    <rect class="metal" x="636" y="466" width="40" height="12"/>
+    <rect class="chip" x="630" y="476" width="52" height="44" rx="3"/>
+    <text class="silk-s" x="656" y="502" text-anchor="middle">4184</text>
+    <rect class="term" x="764" y="438" width="40" height="132" rx="4"/>
+    <use href="#pad" x="552" y="470"/>
+    <use href="#pad-gnd" x="552" y="518"/>
+    <use href="#screw" x="784" y="454"/>
+    <use href="#screw" x="784" y="490"/>
+    <use href="#screw" x="784" y="526"/>
+    <use href="#screw" x="784" y="562"/>
+    <text class="silk-s" x="566" y="474">TRIG</text>
+    <text class="silk-s" x="566" y="522">GND</text>
+    <text class="silk-s" x="756" y="458" text-anchor="end">DC+</text>
+    <text class="silk-s" x="756" y="494" text-anchor="end">DC−</text>
+    <text class="silk-s" x="756" y="530" text-anchor="end">OUT+</text>
+    <text class="silk-s" x="756" y="566" text-anchor="end">OUT−</text>
+    <text class="silk" x="656" y="552" text-anchor="middle">U3 D4184</text>
+  </g>
+
+  <!-- R1 -->
+  <g id="r1">
+    <title>R1 10k kéo GPIO16 xuống GND: relay không chập chờn trong lúc ESP32 khởi động (bỏ nếu module đã có sẵn)</title>
+    <line class="lead" x1="520" y1="606" x2="584" y2="606"/>
+    <rect class="res" x="532" y="600" width="40" height="12" rx="5"/>
+    <use href="#pad" x="520" y="606"/>
+    <use href="#pad-gnd" x="584" y="606"/>
+    <text class="silk" x="552" y="594" text-anchor="middle">R1 10k</text>
+  </g>
+
+  <!-- ══════════════ NGOÀI BO ══════════════ -->
+  <g id="src-pin">
+    <title>Nguồn Pin 12V (cần chủ xác nhận: lấy thẳng hay qua DC-DC từ pin 24V)</title>
+    <rect class="box" x="880" y="160" width="130" height="85" rx="10"/>
+    <text class="h" x="945" y="196" text-anchor="middle">NGUỒN PIN</text>
+    <text class="s" x="945" y="216" text-anchor="middle">12V (DC-DC?)</text>
+    <path class="wtap" d="M800 182H880"/>
+    <path class="wgnd" d="M800 222.6H880"/>
+  </g>
+  <g id="src-adp">
+    <title>Adaptor 12V từ điện lưới</title>
+    <rect class="box" x="880" y="300" width="130" height="90" rx="10"/>
+    <text class="h" x="945" y="340" text-anchor="middle">ADAPTOR</text>
+    <text class="s" x="945" y="360" text-anchor="middle">12V điện lưới</text>
+    <path class="wtap" d="M800 326H880"/>
+    <path class="wgnd" d="M800 366.6H880"/>
+  </g>
+  <g id="w-pin-main">
+    <title>Dây tải nhánh Pin: + Pin → F1 → chân 87a (NC) của relay</title>
+    <path class="w12" d="M1010 182H1170V430"/>
+    <rect class="fuse" x="1060" y="171" width="50" height="22" rx="4"/>
+    <line class="sym" x1="1066" y1="182" x2="1104" y2="182"/>
+    <text class="mono" x="1085" y="162" text-anchor="middle">F1</text>
+  </g>
+  <g id="w-adp-main">
+    <title>Dây tải nhánh Adaptor: + Adaptor → F2 → chân 87 (NO) của relay</title>
+    <path class="w12" d="M1010 326H1120V430"/>
+    <rect class="fuse" x="1035" y="315" width="50" height="22" rx="4"/>
+    <line class="sym" x1="1041" y1="326" x2="1079" y2="326"/>
+    <text class="mono" x="1060" y="306" text-anchor="middle">F2</text>
+  </g>
+  <g id="w-coil">
+    <title>Hai dây cuộn hút từ OUT+/OUT− của D4184 sang chân 86/85 của relay</title>
+    <path class="wcoil" d="M784 526H1040"/>
+    <path class="wcoil" d="M784 562H1040"/>
+  </g>
+  <g id="d3">
+    <title>D3 1N4007 chống điện áp ngược của cuộn hút: catot (vạch) về 86 (+), anot về 85. Bắt buộc nếu module chưa có</title>
+    <line class="sym" x1="960" y1="526" x2="960" y2="537"/>
+    <line class="sym" x1="960" y1="551" x2="960" y2="562"/>
+    <path class="symf" d="M949 551H971L960 537Z"/>
+    <line class="sym" x1="948" y1="536" x2="972" y2="536"/>
+    <circle class="dot" cx="960" cy="526" r="3.5"/>
+    <circle class="dot" cx="960" cy="562" r="3.5"/>
+    <text class="lbl" x="940" y="549" text-anchor="end">D3 1N4007</text>
+  </g>
+  <g id="k1">
+    <title>K1 relay SPDT 12V 40A (rơ-le ô tô 5 chân). Cuộn không điện: 30 nối 87a = dùng Pin</title>
+    <rect class="relay" x="1040" y="430" width="180" height="170" rx="10"/>
+    <rect class="box" x="1052" y="515" width="30" height="60" rx="3"/>
+    <line class="sym" x1="1052" y1="575" x2="1082" y2="515"/>
+    <circle class="dot" cx="1120" cy="452" r="6"/>
+    <circle class="dot" cx="1170" cy="452" r="6"/>
+    <circle class="dot" cx="1140" cy="578" r="7"/>
+    <line class="arm-alt" x1="1140" y1="578" x2="1122" y2="462"/>
+    <line class="arm" x1="1140" y1="578" x2="1168" y2="462"/>
+    <text class="lbl" x="1112" y="420" text-anchor="end">87 · NO</text>
+    <text class="lbl" x="1178" y="420">87a · NC</text>
+    <text class="lbl" x="1034" y="519" text-anchor="end">86</text>
+    <text class="lbl" x="1034" y="555" text-anchor="end">85</text>
+    <text class="mono" x="1052" y="594">K1 12V 40A</text>
+  </g>
+  <g id="load">
+    <title>Tải 12V nối chân 30 (COM) của relay; âm tải về GND chung</title>
+    <path class="w12" d="M1140 600V646"/>
+    <text class="lbl" x="1150" y="628">30 · COM</text>
+    <rect class="box" x="1060" y="646" width="160" height="52" rx="10"/>
+    <text class="h" x="1140" y="677" text-anchor="middle">TẢI 12V</text>
+  </g>
+
+  <!-- Thước và chú giải -->
+  <g id="scale">
+    <title>Thước tỉ lệ 10 mm</title>
+    <path class="silk-line" d="M40 694H120M40 688V700M120 688V700"/>
+    <text class="silk-s" x="130" y="698">10 mm</text>
+  </g>
+  <g id="pcb-legend">
+    <title>Chú giải</title>
+    <line class="cu cu12" x1="40" y1="740" x2="76" y2="740"/><text class="lg" x="84" y="745">đồng mặt trên</text>
+    <use href="#pad-gnd" x="232" y="740"/><text class="lg" x="248" y="745">đệm nối GND (mặt dưới phủ đồng)</text>
+    <line class="w12" x1="500" y1="740" x2="536" y2="740"/><text class="lg" x="546" y="745">dây tải 12V (2.5–4 mm²)</text>
+    <line class="wtap" x1="740" y1="740" x2="776" y2="740"/><text class="lg" x="784" y="745">dây nuôi bo (0.5 mm²)</text>
+    <line class="wcoil" x1="960" y1="740" x2="996" y2="740"/><text class="lg" x="1004" y="745">dây cuộn hút</text>
+    <text class="lg" x="40" y="776">Âm Pin, Adaptor, tải và bo nối chung một điểm GND. Dây tải không đi qua bo: bo chỉ nuôi ESP32 và cuộn hút (&lt; 0.5 A).</text>
+  </g>
+</svg>

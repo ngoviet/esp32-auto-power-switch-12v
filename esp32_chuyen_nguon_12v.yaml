@@ -1,55 +1,77 @@
 substitutions:
-  dev_name: "chuyen_nguon_12v"
-  
-  # === Entity IDs từ Home Assistant ===
-  battery_soc_entity: "sensor.jk_remaining_capacity"
-  
-  # === GPIO Pins ===
-  relay_pin: "GPIO16"
-  
-  # === Ngưỡng SOC mặc định ===
-  soc_switch_to_adapter_default: "50"  # Ngưỡng chuyển sang Adaptor
-  soc_switch_to_battery_default: "70"  # Ngưỡng chuyển về Pin
-  
-  # === Khoảng thời gian cập nhật ===
-  auto_check_interval: "1s"
-  wifi_check_interval: "2min"
-  soc_status_update: "5s"
+  # Tên máy (hostname): dùng "-" thay "_" để mDNS/DHCP không lỗi.
+  dev_name: "chuyen-nguon-12v"
+  friendly_name: "Chuyển nguồn 12V"
+
+  # === Entity SOC (%) của pin trong Home Assistant ===
+  # JK BMS 24V 280Ah tầng 3 (repo esp32_doc_pin_24v). Entity cũ
+  # sensor.jk_remaining_capacity không còn trong HA từ khi BMS đổi tên.
+  battery_soc_entity: "sensor.tang_3_24v280ah_remaining_capacity"
+
+  # === GPIO ===
+  relay_pin: "GPIO16" # vào chân TRIG/PWM của module MOSFET D4184
+
+  # === Ngưỡng SOC mặc định (chỉnh lại được trên HA, nhớ qua khởi động lại) ===
+  soc_switch_to_adapter_default: "50" # SOC < ngưỡng này → dùng Adaptor
+  soc_switch_to_battery_default: "70" # SOC > ngưỡng này → về Pin
+
+  # === Bảo vệ ===
+  # Mất SOC (HA ngắt hoặc entity unavailable) quá số giây này mới áp lựa chọn "Khi mất SOC".
+  soc_lost_delay_s: "600"
+  # Ở chế độ Auto, hai lần tự chuyển cách nhau ít nhất bấy nhiêu giây (chống nhấp nhả relay).
+  min_switch_gap_s: "60"
+  # Chu kỳ chạy lại logic dự phòng; bình thường logic chạy ngay khi có sự kiện.
+  eval_interval: "5s"
 
 esphome:
   name: ${dev_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100 # sau khi mọi thành phần đã khởi tạo và khôi phục trạng thái
+    then:
+      - script.execute: evaluate
 
 esp32:
   board: esp32dev
   framework:
     type: esp-idf
 
-# ──────────────────────────── Wi-Fi ổn định ────────────────────────────
+packages:
+  base: !include base_setup.yaml
+
+# ──────────────────────────── Wi-Fi ────────────────────────────
 wifi:
   networks:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
   ap:
     ssid: ${dev_name}
+    password: !secret ap_password # AP dự phòng phải có mật khẩu, không thì ai ở gần cũng đổi được Wi-Fi
 
-packages:
-  base: !include base_setup.yaml
-
-# ─────────────────────────── Hardware Control ──────────────────────────
+# ─────────────────────────── Phần cứng ──────────────────────────
 switch:
+  # Cuộn hút relay chính qua module D4184. ON = dùng Adaptor (tiếp điểm NO),
+  # OFF / mất điện ESP32 = về Pin (tiếp điểm NC).
+  # Để internal: điều khiển tay bằng chế độ "Force Pin" / "Force Adaptor",
+  # tránh bật tay ở chế độ Auto rồi bị logic giành lại.
   - platform: gpio
     id: sw_relay_to_adapter
-    name: "Chuyen sang Adaptor (coil)"
+    name: "Relay Adaptor"
+    internal: true
     pin:
       number: ${relay_pin}
       mode: OUTPUT
-      inverted: false
-    restore_mode: ALWAYS_OFF
+    # Khởi động lại thì trả relay về trạng thái trước đó, không nhảy về Pin
+    # trong lúc chờ Wi-Fi/HA gửi SOC.
+    restore_mode: RESTORE_DEFAULT_OFF
 
+# ─────────────────────────── Lựa chọn ───────────────────────────
 select:
+  # Thứ tự lựa chọn là chỉ số mà logic dùng: 0 Auto, 1 Force Pin, 2 Force Adaptor.
   - platform: template
     id: mode_select
-    name: "Che do chuyen nguon"
+    name: "Chế độ chuyển nguồn"
+    icon: mdi:transit-connection-variant
     options:
       - "Auto"
       - "Force Pin"
@@ -57,49 +79,33 @@ select:
     initial_option: "Auto"
     restore_value: true
     optimistic: true
-
-binary_sensor:
-  - platform: template
-    id: is_on_adapter
-    name: "Dang dung Adaptor?"
-    lambda: |-
-      return id(sw_relay_to_adapter).state;
-
-# ─────────────────────────── SOC Monitoring ──────────────────────────
-sensor:
-  # Sensor nhận SOC từ HA
-  - platform: homeassistant
-    id: battery_soc_from_ha
-    entity_id: ${battery_soc_entity}
-    name: "Battery SOC từ HA"
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    icon: mdi:battery-outline
-    # Cập nhật ngay khi có thay đổi từ HA
     on_value:
-      - logger.log: 
-          format: "SOC updated from HA: %.1f%%"
-          args: [ 'x' ]
+      - script.execute: evaluate
 
-  # Sensor cục bộ để lưu trữ SOC
+  # Việc làm khi mất SOC quá soc_lost_delay_s: 0 giữ nguyên, 1 Adaptor, 2 Pin.
   - platform: template
-    id: battery_soc_local
-    name: "Battery SOC (Local)"
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    icon: mdi:battery
-    lambda: |-
-      if (!isnan(id(battery_soc_from_ha).state)) {
-        return id(battery_soc_from_ha).state;
-      }
-      return {};
+    id: lost_soc_action
+    name: "Khi mất SOC"
+    icon: mdi:battery-unknown
+    entity_category: config
+    options:
+      - "Giữ nguyên"
+      - "Chuyển sang Adaptor"
+      - "Chuyển về Pin"
+    initial_option: "Giữ nguyên"
+    restore_value: true
+    optimistic: true
+    on_value:
+      - script.execute: evaluate
 
-# ─────────────────────────── Configuration Numbers ──────────────────────────
+# ─────────────────────────── Ngưỡng ───────────────────────────
+# Hai dải không chồng nhau (20–60 và 60–90) nên luôn có vùng trễ (hysteresis).
 number:
   - platform: template
     id: soc_switch_to_adapter
     name: "Ngưỡng chuyển sang Adaptor"
     optimistic: true
+    restore_value: true # trước đây mất giá trị đã chỉnh mỗi lần khởi động lại
     min_value: 20
     max_value: 60
     initial_value: ${soc_switch_to_adapter_default}
@@ -107,11 +113,14 @@ number:
     unit_of_measurement: "%"
     icon: mdi:power-plug
     entity_category: config
-    
+    on_value:
+      - script.execute: evaluate
+
   - platform: template
     id: soc_switch_to_battery
     name: "Ngưỡng chuyển về Pin"
     optimistic: true
+    restore_value: true
     min_value: 60
     max_value: 90
     initial_value: ${soc_switch_to_battery_default}
@@ -119,105 +128,136 @@ number:
     unit_of_measurement: "%"
     icon: mdi:battery-charging
     entity_category: config
+    on_value:
+      - script.execute: evaluate
 
-# ─────────────────────────── Status Display ──────────────────────────
-text_sensor:
+# ─────────────────────────── SOC từ HA ───────────────────────────
+sensor:
+  # internal: HA đã có sẵn giá trị gốc, không gửi ngược lại thành entity trùng.
+  - platform: homeassistant
+    id: battery_soc
+    entity_id: ${battery_soc_entity}
+    internal: true
+    on_value:
+      - script.execute: evaluate
+
+# ─────────────────────────── Trạng thái ───────────────────────────
+binary_sensor:
   - platform: template
-    name: "Trạng thái SOC"
-    update_interval: ${soc_status_update}
+    id: is_on_adapter
+    name: "Đang dùng Adaptor"
+    icon: mdi:power-plug
     lambda: |-
-      if (isnan(id(battery_soc_from_ha).state)) {
-        return {"Chưa kết nối HA"};
-      }
-      
-      float soc = id(battery_soc_from_ha).state;
-      float adapter_thresh = id(soc_switch_to_adapter).state;
-      float battery_thresh = id(soc_switch_to_battery).state;
-      
-      char status[80];
-      if (soc < adapter_thresh) {
-        snprintf(status, sizeof(status), "Thấp - Dùng Adaptor (%.1f%% < %.0f%%)", soc, adapter_thresh);
-      } else if (soc > battery_thresh) {
-        snprintf(status, sizeof(status), "Cao - Dùng Pin (%.1f%% > %.0f%%)", soc, battery_thresh);
-      } else {
-        snprintf(status, sizeof(status), "Trung bình (%.1f%% | %.0f%%-%.0f%%)", soc, adapter_thresh, battery_thresh);
-      }
-      
-      return {status};
+      return id(sw_relay_to_adapter).state;
 
-# ─────────────────────────── Control Scripts ──────────────────────────
+  # Bật khi HA đang kết nối và entity SOC có số. Do script evaluate cập nhật.
+  - platform: template
+    id: soc_valid
+    name: "SOC hợp lệ"
+    device_class: connectivity
+    entity_category: diagnostic
+
+text_sensor:
+  # Một dòng tóm tắt: chế độ · nguồn đang dùng · SOC và ngưỡng. Do script evaluate cập nhật.
+  - platform: template
+    id: status_text
+    name: "Trạng thái"
+    icon: mdi:information-outline
+    update_interval: never
+
+globals:
+  - id: last_switch_ms # millis() lần tự chuyển gần nhất, 0 = chưa chuyển lần nào
+    type: uint32_t
+    initial_value: "0"
+  - id: soc_lost_since_ms # millis() lúc bắt đầu mất SOC, 0 = đang có SOC
+    type: uint32_t
+    initial_value: "0"
+
+# ─────────────────────────── Logic chuyển nguồn ───────────────────────────
 script:
-  - id: set_adapter
+  - id: evaluate
     then:
-      - switch.turn_on: sw_relay_to_adapter
-      - delay: 200ms
-      
-  - id: set_battery
-    then:
-      - switch.turn_off: sw_relay_to_adapter
-      - delay: 200ms
+      - lambda: |-
+          static const char *const MODES[] = {"Auto", "Force Pin", "Force Adaptor"};
+          static const char *const LOST_ACTIONS[] = {"giữ nguyên", "chuyển sang Adaptor", "chuyển về Pin"};
+          const uint32_t now = millis();
 
-# ─────────────────────────── Auto Control Logic ──────────────────────────
+          // 1) SOC chỉ đáng tin khi HA đang kết nối (HA chỉ đẩy giá trị khi đổi,
+          //    nên mất kết nối thì số cuối cùng có thể đã cũ) và entity có số.
+          const float soc = id(battery_soc).state;
+          const bool ha_ok = api::global_api_server != nullptr &&
+                             api::global_api_server->is_connected_with_state_subscription();
+          const bool soc_ok = ha_ok && !std::isnan(soc);
+          id(soc_valid).publish_state(soc_ok);
+          if (soc_ok) {
+            id(soc_lost_since_ms) = 0;
+          } else if (id(soc_lost_since_ms) == 0) {
+            id(soc_lost_since_ms) = now | 1;  // |1 để không trùng giá trị 0 = "đang có SOC"
+          }
+          const uint32_t lost_s = soc_ok ? 0 : (now - id(soc_lost_since_ms)) / 1000;
+
+          // 2) Quyết định nguồn mong muốn.
+          const float lo = id(soc_switch_to_adapter).state;
+          const float hi = id(soc_switch_to_battery).state;
+          const size_t mode = id(mode_select).active_index().value_or(0);
+          const size_t lost_act = id(lost_soc_action).active_index().value_or(0);
+          const bool on_adapter = id(sw_relay_to_adapter).state;
+          bool want_adapter = on_adapter;  // mặc định: giữ nguyên
+          bool lost_applied = false;
+          if (mode == 1) {
+            want_adapter = false;
+          } else if (mode == 2) {
+            want_adapter = true;
+          } else if (soc_ok) {
+            if (soc < lo) want_adapter = true;        // pin thấp → Adaptor
+            else if (soc > hi) want_adapter = false;  // pin đủ → về Pin (ưu tiên)
+            // lo ≤ SOC ≤ hi: vùng trễ, giữ nguyên
+          } else if (lost_s >= ${soc_lost_delay_s} && lost_act != 0) {
+            want_adapter = (lost_act == 1);
+            lost_applied = true;
+          }
+
+          // 3) Đóng/ngắt relay. Ở Auto có khoảng cách tối thiểu giữa hai lần chuyển.
+          if (want_adapter != on_adapter) {
+            const bool gap_ok = id(last_switch_ms) == 0 ||
+                                (now - id(last_switch_ms)) >= ${min_switch_gap_s} * 1000UL;
+            if (mode != 0 || gap_ok) {
+              if (soc_ok) {
+                ESP_LOGI("chuyen_nguon", "[%s] %s -> %s (SOC %.1f%%, nguong %.0f/%.0f)", MODES[mode],
+                         on_adapter ? "Adaptor" : "Pin", want_adapter ? "Adaptor" : "Pin", soc, lo, hi);
+              } else {
+                ESP_LOGW("chuyen_nguon", "[%s] %s -> %s (mat SOC %us)", MODES[mode],
+                         on_adapter ? "Adaptor" : "Pin", want_adapter ? "Adaptor" : "Pin", (unsigned) lost_s);
+              }
+              if (want_adapter) id(sw_relay_to_adapter).turn_on();
+              else id(sw_relay_to_adapter).turn_off();
+              id(last_switch_ms) = now | 1;
+            }
+          }
+
+          // 4) Dòng trạng thái, chỉ gửi khi nội dung đổi.
+          const char *src = id(sw_relay_to_adapter).state ? "Adaptor" : "Pin";
+          char buf[128];
+          if (soc_ok) {
+            snprintf(buf, sizeof(buf), "%s · %s · SOC %.0f%% (Adaptor <%.0f%%, Pin >%.0f%%)",
+                     MODES[mode], src, soc, lo, hi);
+          } else {
+            const char *cause = ha_ok ? "Không có SOC" : "Mất kết nối HA";
+            const unsigned lost_min = lost_s / 60;
+            if (mode != 0) {
+              snprintf(buf, sizeof(buf), "%s · %s · %s %u phút", MODES[mode], src, cause, lost_min);
+            } else if (lost_applied) {
+              snprintf(buf, sizeof(buf), "%s · %s · %s %u phút → đã %s", MODES[mode], src, cause,
+                       lost_min, LOST_ACTIONS[lost_act]);
+            } else {
+              snprintf(buf, sizeof(buf), "%s · %s · %s %u phút (giữ nguyên)", MODES[mode], src, cause,
+                       lost_min);
+            }
+          }
+          if (id(status_text).get_state() != buf) id(status_text).publish_state(buf);
+
+# Chạy lại định kỳ: bắt mốc "mất SOC quá lâu" và hết khoảng cách tối thiểu giữa hai lần chuyển.
 interval:
-  # Logic chuyển nguồn chính
-  - interval: ${auto_check_interval}
+  - interval: ${eval_interval}
     then:
-      # Force Pin
-      - if:
-          condition:
-            lambda: 'return id(mode_select).state == "Force Pin";'
-          then:
-            - switch.turn_off: sw_relay_to_adapter
-      
-      # Force Adaptor
-      - if:
-          condition:
-            lambda: 'return id(mode_select).state == "Force Adaptor";'
-          then:
-            - switch.turn_on: sw_relay_to_adapter
-      
-      # Auto (Pin luôn ưu tiên - chỉ chuyển Adaptor khi cần thiết)
-      - if:
-          condition:
-            lambda: 'return id(mode_select).state == "Auto";'
-          then:
-            # Chuyển sang Adaptor khi SOC < 50%
-            - if:
-                condition:
-                  and:
-                    - lambda: 'return !isnan(id(battery_soc_from_ha).state);'
-                    - lambda: 'return id(battery_soc_from_ha).state < id(soc_switch_to_adapter).state;'
-                    - switch.is_off: sw_relay_to_adapter
-                then:
-                  - logger.log: 
-                      format: "SOC thấp (%.1f%% < %.0f%%) -> Chuyển sang Adaptor"
-                      args: [ 'id(battery_soc_from_ha).state', 'id(soc_switch_to_adapter).state' ]
-                  - switch.turn_on: sw_relay_to_adapter
-            
-            # Chuyển về Pin khi SOC > 70% (Pin luôn ưu tiên)
-            - if:
-                condition:
-                  and:
-                    - lambda: 'return !isnan(id(battery_soc_from_ha).state);'
-                    - lambda: 'return id(battery_soc_from_ha).state > id(soc_switch_to_battery).state;'
-                    - switch.is_on: sw_relay_to_adapter
-                then:
-                  - logger.log: 
-                      format: "SOC cao (%.1f%% > %.0f%%) -> Chuyển về Pin (ưu tiên)"
-                      args: [ 'id(battery_soc_from_ha).state', 'id(soc_switch_to_battery).state' ]
-                  - switch.turn_off: sw_relay_to_adapter
-
-  # Tự phục hồi nếu Wi-Fi rớt kéo dài
-  - interval: ${wifi_check_interval}
-    then:
-      - if:
-          condition: 
-            wifi.connected:
-          then: 
-            - logger.log: "WiFi OK"
-          else:
-            - logger.log: "WiFi down >2min → restarting device…"
-            - button.press: restart_button
-
-
-
+      - script.execute: evaluate
